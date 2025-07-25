@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FastFlags Scanner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      text-align: center;
+    }
+    input[type="file"] {
+      margin: 1rem 0;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    pre {
+      text-align: left;
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    .banned {
+      color: red;
+      font-weight: bold;
+    }
+    .clean {
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>FastFlags Banned Flags Scanner</h1>
+  <p>Select one or more <code>.txt</code> or <code>.json</code> files to scan.</p>
+
+  <input type="file" id="fileInput" multiple accept=".txt,.json" />
+  <br />
+  <button onclick="uploadFiles()">Scan Files</button>
+
+  <h2>Results:</h2>
+  <pre id="results"></pre>
+
+  <script>
+    async function uploadFiles() {
+      const files = document.getElementById('fileInput').files;
+      if (files.length === 0) {
+        alert('Please select files first!');
+        return;
+      }
+
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append('files', file);
+      }
+
+      const resultsElem = document.getElementById('results');
+      resultsElem.textContent = 'Scanning...';
+
+      try {
+        const response = await fetch('/scan', {
+          method: 'POST',
+          body: formData
+        });
+
+        const results = await response.json();
+
+        let output = '';
+        results.forEach(result => {
+          if (result.bannedFlags.length > 0) {
+            output += `🚫 File: ${result.file}\nBanned Flags Found:\n`;
+            result.bannedFlags.forEach(flag => {
+              output += ` - ${flag}\n`;
+            });
+            output += '\n';
+          } else {
+            output += `✅ File: ${result.file} — No banned flags found.\n\n`;
+          }
+        });
+
+        resultsElem.textContent = output;
+      } catch (err) {
+        resultsElem.textContent = 'Error scanning files: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
