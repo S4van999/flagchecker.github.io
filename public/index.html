@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FastFlags Checker</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    input, button {
+      margin: 0.5rem 0;
+      padding: 0.8rem;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: none;
+      outline: none;
+    }
+    input {
+      width: 300px;
+      max-width: 80vw;
+    }
+    button {
+      background: #e00;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover:not(:disabled) {
+      background: #ff3b3b;
+    }
+    button:disabled {
+      background: #550000;
+      cursor: not-allowed;
+    }
+    #results {
+      margin-top: 1rem;
+      max-width: 90vw;
+      white-space: pre-wrap;
+      background: #111;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 0 20px #e00;
+    }
+  </style>
+</head>
+<body>
+  <h1>FastFlags Checker</h1>
+
+  <label for="username">Enter Username:</label><br />
+  <input type="text" id="username" placeholder="Your username" />
+
+  <label for="fileInput">Select files to scan:</label><br />
+  <input type="file" id="fileInput" multiple disabled />
+
+  <button id="scanBtn" disabled>Scan Files</button>
+
+  <div id="results"></div>
+
+  <script>
+    const usernameInput = document.getElementById('username');
+    const fileInput = document.getElementById('fileInput');
+    const scanBtn = document.getElementById('scanBtn');
+    const resultsDiv = document.getElementById('results');
+
+    // Enable file input only if username is filled
+    usernameInput.addEventListener('input', () => {
+      const hasUsername = usernameInput.value.trim().length > 0;
+      fileInput.disabled = !hasUsername;
+      scanBtn.disabled = !hasUsername || fileInput.files.length === 0;
+      resultsDiv.textContent = '';
+    });
+
+    // Enable scan button only if files are selected and username is filled
+    fileInput.addEventListener('change', () => {
+      const hasFiles = fileInput.files.length > 0;
+      const hasUsername = usernameInput.value.trim().length > 0;
+      scanBtn.disabled = !(hasUsername && hasFiles);
+      resultsDiv.textContent = '';
+    });
+
+    scanBtn.addEventListener('click', async () => {
+      if (scanBtn.disabled) return;
+
+      const username = usernameInput.value.trim();
+      if (!username) {
+        alert('Please enter your username');
+        return;
+      }
+
+      const files = fileInput.files;
+      if (files.length === 0) {
+        alert('Please select at least one file');
+        return;
+      }
+
+      scanBtn.disabled = true;
+      resultsDiv.textContent = 'Scanning...';
+
+      const formData = new FormData();
+      formData.append('username', username);
+      for (const file of files) {
+        formData.append('files', file);
+      }
+
+      try {
+        const response = await fetch('/scan', {
+          method: 'POST',
+          body: formData,
+        });
+        const results = await response.json();
+
+        let output = '';
+        for (const result of results) {
+          if (result.error) {
+            output += `File: ${result.file} - Error: ${result.error}\n`;
+          } else if (result.bannedFlags.length > 0) {
+            output += `🚨 File: ${result.file} - Banned Flags: ${result.bannedFlags.join(', ')}\n`;
+          } else {
+            output += `✅ File: ${result.file} - No banned flags found.\n`;
+          }
+        }
+
+        resultsDiv.textContent = output;
+      } catch (err) {
+        resultsDiv.textContent = 'Error scanning files. Please try again.';
+        console.error(err);
+      } finally {
+        scanBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
